@@ -1,7 +1,7 @@
 {
-  "name": "owt-sample-conference",
-  "title": "Open WebRTC Toolkit Conference Sample",
-  "description": "Open WebRTC Toolkit JavaScript Conference Sample",
+  "name": "owt-cascading-cloud",
+  "title": "Open WebRTC Toolkit Cascading Cloud Sample",
+  "description": "Open WebRTC Toolkit Cascading Cloud Service Sample",
   "version": "5.0.0",
   "homepage": "http://webrtc.intel.com",
   "author": "Open WebRTC Toolkit authors",

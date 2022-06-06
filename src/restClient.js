@@ -281,6 +281,51 @@ var restClient = function(spec) {
     }, callbackError);
   }
 
+  /**
+     * @function getRoom
+     * @desc This function returns information on the specified room.
+     * @memberOf OWT_REST.API
+     * @param {string} room                          -Room ID
+     * @param {function} callback                    -Callback function on success
+     * @param {function} callbackError               -Callback function on error
+     * @example
+  var roomId = '51c10d86909ad1f939000001';
+  OWT_REST.API.getRoom(roomId, function(room) {
+    console.log('Room name:', room.name);
+  }, function(status, error) {
+    // HTTP status and error
+    console.log(status, error);
+  });
+     */
+  that.getRoom = function(room, callback, callbackError) {
+    if (typeof room !== 'string') {
+      callbackError(401, 'Invalid room ID.');
+      return;
+    }
+    if (room.trim() === '') {
+      callbackError(401, 'Empty room ID');
+      return;
+    }
+    send('GET', 'rooms/' + room, undefined, function(roomRtn) {
+      var room = JSON.parse(roomRtn);
+      callback(room);
+    }, callbackError);
+  };
+
+  that.createToken = function(room, user, role, preference, callback, callbackError) {
+    console.log("typeof room:", typeof room);
+    console.log("typeof user:", typeof user);
+    console.log("typeof role:", typeof role);
+    console.log("typeof callbackError:", typeof callbackError);
+    if (typeof room !== 'string' || typeof user !== 'string' || typeof role !== 'string') {
+      if (typeof callbackError === 'function')
+        callbackError(400, 'Invalid argument.');
+      return;
+    }
+    send('POST', 'rooms/' + room + '/tokens/', {preference: preference, user: user, role: role}, callback, callbackError);
+  };
+
+
   return that;
 };
 

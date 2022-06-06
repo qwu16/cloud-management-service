@@ -92,15 +92,19 @@ var checkEventCascading = function (conferenceID, region, clusterID) {
       console.log("No cluster in this region serve for this conference:", conferenceID);
     } else {
       clusters.forEach ((cluster) => {
+        console.log("cluster is:", cluster, " clusterID:", clusterID);
         if(cluster !== clusterID) {
           var options = {
-            selfRoom: conferences[conferenceID][region][clusterID].room,
+            room: conferenceID,
+            targetCluster: cluster,
+            selfCluster: clusterID,
             evIP: regions[allregion][cluster].eventbridgeip,
-            evPort: regions[allregion][cluster].eventbridgeport,
-            room: conferences[conferenceID][allregion][cluster].room
+            mediaIP: regions[allregion][cluster].mediabridgeip,
+            mediaPort: regions[allregion][cluster].mediabridgeport,
+            evPort: regions[allregion][cluster].eventbridgeport
           }
           console.log("cascading options are:", options);
-          restClients[clusterID].startEventCascading(conferences[conferenceID][region][clusterID].room, options, function(roomID){
+          restClients[clusterID].startEventCascading(conferenceID, options, function(roomID){
             console.log("start cascading successfully");
           }, function(error){
             console.log("start cascading fail with error:", error);
@@ -111,18 +115,45 @@ var checkEventCascading = function (conferenceID, region, clusterID) {
   });
 }
 
-app.post('/joinConference/', function(req, res) {
+var sendTokenRequest = function (clusterID, req, res) {
   var region = req.body.region,
-      conferenceID = req.body.conferenceID;
+      conferenceID = req.body.room,
+      username = req.body.user,
+      role = req.body.role;
+
+  var preference = {isp: 'isp', region: 'region'};
+
+  restClients[clusterID].createToken(conferenceID, username, role, preference, function(token) {
+    res.send(token);
+  }, function(err) {
+    res.send(err);
+  });
+
+  setTimeout(() => {
+    checkEventCascading(conferenceID, region, clusterID);
+    }, 3000);
+
+}
+
+app.post('/createToken/', function(req, res) {
+  var region = req.body.region,
+      conferenceID = req.body.room,
+      username = req.body.user,
+      role = req.body.role;
+
+  if (!conferenceID) {
+    var conferenceID = Math.round(Math.random() * 1000000000000000000) + '';
+  }
 
   console.log("join conference and conferences:", conferences);
   if (conferences[conferenceID] && conferences[conferenceID][region]) {
+    var preference = {isp: 'isp', region: 'region'};
     var clusterID = selectCluster(conferences[conferenceID][region]);
-    var info = {
-      url: regions[region][clusterID].webserverurl,
-      room: conferences[conferenceID][region][clusterID].room
-    }
-    res.send(info);
+    restClients[clusterID].createToken(conferenceID, username, role, preference, function(token) {
+      res.send(token);
+    }, function(err) {
+      res.send(err);
+    });
   } else {
     if (!conferences[conferenceID]) {
       conferences[conferenceID] = {};
@@ -137,26 +168,24 @@ app.post('/joinConference/', function(req, res) {
       console.log("regions are:", regions);
       console.log("clusterID:", clusterID, " region:", region);
       console.log("restclients are:", restClients);
-      var options = {};
+
+      var options = {
+        _id: conferenceID,
+    };
       if (!conferences[conferenceID][region][clusterID]) {
         conferences[conferenceID][region][clusterID] = {};
       }
       
-
-      restClients[clusterID].createRoom(conferenceID, options, function(room){
-        var info = {
-          url: regions[region][clusterID].webserverurl,
-          room: room.id
-        }
-        console.log("create room succeed with info:", info);
-        res.send(info);
-
-        conferences[conferenceID][region][clusterID].room = room.id;
-        console.log("conferences in cluster:", conferences);
-        checkEventCascading(conferenceID, region, clusterID);
-      }, function(error){
-        res.send(error);
-      })
+      restClients[clusterID].getRoom(conferenceID, function (rooms) {
+        sendTokenRequest(clusterID, req, res);
+      }, function(error) {
+        restClients[clusterID].createRoom(conferenceID, options, function(room){
+          console.log("create room succeed with info:", room);
+          sendTokenRequest(clusterID, req, res);
+        }, function(error){
+          res.send(error);
+        })
+      });
     } else {
       res.send('Conference is not avaiable');
     }
