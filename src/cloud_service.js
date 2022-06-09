@@ -40,7 +40,7 @@ var express = require('express'),
 
 var app = express();
 
-var regions = {},
+var clusters = {},
     restClients = {},
     conferences = {};
 
@@ -94,24 +94,47 @@ var checkEventCascading = function (conferenceID, region, clusterID) {
       clusters.forEach ((cluster) => {
         console.log("cluster is:", cluster, " clusterID:", clusterID);
         if(cluster !== clusterID) {
-          var options = {
-            room: conferenceID,
-            targetCluster: cluster,
-            selfCluster: clusterID,
-            evIP: regions[allregion][cluster].eventbridgeip,
-            mediaIP: regions[allregion][cluster].mediabridgeip,
-            mediaPort: regions[allregion][cluster].mediabridgeport,
-            evPort: regions[allregion][cluster].eventbridgeport
+          if (conferences[conferenceID][allregion][cluster].eventbridgeip) {
+            var options = {
+                room: conferenceID,
+                targetCluster: cluster,
+                selfCluster: clusterID,
+                evIP: conferences[conferenceID][allregion][cluster].eventbridgeip,
+                mediaIP: conferences[conferenceID][allregion][cluster].mediabridgeip,
+                mediaPort: conferences[conferenceID][allregion][cluster].mediabridgeport,
+                evPort: conferences[conferenceID][allregion][cluster].eventbridgeport
+              }
+
+              console.log("cascading options are:", options);
+              restClients[clusterID].startEventCascading(conferenceID, options, function(roomID){
+                console.log("start cascading successfully");
+              }, function(error){
+                console.log("start cascading fail with error:", error);
+              });
+          } else {
+            restClients[cluster].getBridges(conferenceID, clusterID, function(bridgeInfo) {
+              var options = {
+                room: conferenceID,
+                targetCluster: cluster,
+                selfCluster: clusterID,
+                evIP: bridgeInfo.eventbridgeip,
+                mediaIP: bridgeInfo.mediabridgeip,
+                mediaPort: bridgeInfo.mediabridgeport,
+                evPort: bridgeInfo.eventbridgeport
+              }
+
+              console.log("cascading options are:", options);
+              restClients[clusterID].startEventCascading(conferenceID, options, function(roomID){
+                console.log("start cascading successfully");
+              }, function(error){
+                console.log("start cascading fail with error:", error);
+              });
+            }, function (error) {
+            });
           }
-          console.log("cascading options are:", options);
-          restClients[clusterID].startEventCascading(conferenceID, options, function(roomID){
-            console.log("start cascading successfully");
-          }, function(error){
-            console.log("start cascading fail with error:", error);
-          });
         }
       })
-    } 
+    }
   });
 }
 
@@ -159,13 +182,13 @@ app.post('/createToken/', function(req, res) {
       conferences[conferenceID] = {};
     }
     
-    if (regions[region]) {
+    if (clusters[region]) {
       if (!conferences[conferenceID][region]) {
         conferences[conferenceID][region] = {};
       }
       
-      var clusterID = selectCluster(regions[region]);
-      console.log("regions are:", regions);
+      var clusterID = selectCluster(clusters[region]);
+      console.log("clusters are:", clusters);
       console.log("clusterID:", clusterID, " region:", region);
       console.log("restclients are:", restClients);
 
@@ -197,19 +220,48 @@ app.post('/registerCluster/', function(req, res) {
     clusterID = req.body.clusterID,
     info = req.body.info;
     console.log("register cluster with info:", info, " cluster:", clusterID, " region:", region);
-  if (!regions[region]) {
-    regions[region] = {};
+  if (!clusters[region]) {
+    clusters[region] = {};
   }
-  console.log("regions are:", regions);
-  regions[region][clusterID] = info;
+  console.log("clusters are:", clusters);
+  if (!clusters[region][clusterID]) {
+    clusters[region][clusterID] = {};
+  }
+  clusters[region][clusterID].restserver = info;
   var spec = {
     key: info.servicekey,
-    service: info.service,
+    service: info.serviceid,
     url: info.resturl,
     rejectUnauthorizedCert: false
   }
   restClients[clusterID] = restClient(spec);
   res.send('ok')
+});
+
+app.post('/updateCapacity/', function(req, res) {
+  var region = req.body.region,
+    clusterID = req.body.clusterID,
+    info = req.body.info;
+    console.log("update cluster with info:", info, " cluster:", clusterID, " region:", region);
+  if (!clusters[region]) {
+    clusters[region] = {};
+  }
+
+  if (!clusters[region][clusterID]) {
+    clusters[region][clusterID] = {};
+  }
+
+  if(!clusters[region][clusterID].capacity) {
+    clusters[region][clusterID].capacity = [];
+  }
+
+  console.log("clusters are:", JSON.stringify(clusters));
+  if (info.action === 'add') {
+    clusters[region][clusterID].capacity.push(info.capacity);
+  } else {
+    clusters[region][clusterID].capacity.pop(info.capacity);
+  }
+  res.send('ok');
 });
 
 spdy.createServer({

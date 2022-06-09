@@ -274,9 +274,15 @@ var restClient = function(spec) {
   };
 
   that.startEventCascading = function(room, options, callback, callbackError) {
-    send('POST', 'rooms/' + room + '/eventCascading', {
+    send('POST', 'rooms/' + room + '/cascading', {
       options: options
     }, function(result) {
+      callback(result);
+    }, callbackError);
+  }
+
+  that.getBridges = function(room, clusterID, callback, callbackError) {
+    send('GET', 'rooms/' + room + '/bridges', {targetCluster: clusterID}, function(result) {
       callback(result);
     }, callbackError);
   }
