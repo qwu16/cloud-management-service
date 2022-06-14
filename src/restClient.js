@@ -319,10 +319,6 @@ var restClient = function(spec) {
   };
 
   that.createToken = function(room, user, role, preference, callback, callbackError) {
-    console.log("typeof room:", typeof room);
-    console.log("typeof user:", typeof user);
-    console.log("typeof role:", typeof role);
-    console.log("typeof callbackError:", typeof callbackError);
     if (typeof room !== 'string' || typeof user !== 'string' || typeof role !== 'string') {
       if (typeof callbackError === 'function')
         callbackError(400, 'Invalid argument.');

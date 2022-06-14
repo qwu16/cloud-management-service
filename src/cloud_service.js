@@ -112,15 +112,18 @@ var checkEventCascading = function (conferenceID, region, clusterID) {
                 console.log("start cascading fail with error:", error);
               });
           } else {
+            console.log("restClients get bridge info for cluster:", cluster);
             restClients[cluster].getBridges(conferenceID, clusterID, function(bridgeInfo) {
+              var info = JSON.parse(bridgeInfo);
+              console.log("bridge info:", info, " evip:", info.eventbridgeip);
               var options = {
                 room: conferenceID,
                 targetCluster: cluster,
                 selfCluster: clusterID,
-                evIP: bridgeInfo.eventbridgeip,
-                mediaIP: bridgeInfo.mediabridgeip,
-                mediaPort: bridgeInfo.mediabridgeport,
-                evPort: bridgeInfo.eventbridgeport
+                evIP: info.eventbridgeip,
+                mediaIP: info.mediabridgeip,
+                mediaPort: info.mediabridgeport,
+                evPort: info.eventbridgeport
               }
 
               console.log("cascading options are:", options);
